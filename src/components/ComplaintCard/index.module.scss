@@ -1,0 +1,146 @@
+@use '@/styles/variables.scss' as *;
+
+.card {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  margin-bottom: $spacing-md;
+  box-shadow: $shadow-card;
+  transition: all $transition-base;
+
+  &:active {
+    transform: scale(0.99);
+    box-shadow: 0 1rpx 6rpx rgba(0, 0, 0, 0.06);
+  }
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: $spacing-md;
+}
+
+.customerInfo {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.avatar {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: $radius-round;
+  background: $color-primary-bg;
+  margin-right: $spacing-sm;
+  flex-shrink: 0;
+}
+
+.customerMeta {
+  flex: 1;
+  min-width: 0;
+}
+
+.customerName {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: 4rpx;
+}
+
+.customerSub {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+}
+
+.memberLevel {
+  background: $color-primary-bg;
+  color: $color-primary;
+  font-size: $font-size-xs;
+  padding: 2rpx 12rpx;
+  border-radius: $radius-xs;
+}
+
+.statusBadge {
+  padding: 6rpx 20rpx;
+  border-radius: $radius-button;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  flex-shrink: 0;
+}
+
+.statusPending {
+  background: $color-warning-bg;
+  color: $color-warning;
+}
+
+.statusProcessing {
+  background: $color-info-bg;
+  color: $color-info;
+}
+
+.statusDone {
+  background: $color-success-bg;
+  color: $color-success;
+}
+
+.projectName {
+  font-size: $font-size-md;
+  color: $color-text-secondary;
+  margin-bottom: $spacing-md;
+}
+
+.tagList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-sm;
+  margin-bottom: $spacing-md;
+}
+
+.tag {
+  padding: 6rpx 16rpx;
+  border-radius: $radius-sm;
+  font-size: $font-size-sm;
+}
+
+.statement {
+  font-size: $font-size-md;
+  color: $color-text-secondary;
+  line-height: $line-height-normal;
+  margin-bottom: $spacing-md;
+  @include text-ellipsis-multi(2);
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: $spacing-md;
+  border-top: 1rpx solid $color-divider;
+}
+
+.time {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+}
+
+.stepsPreview {
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+}
+
+.stepDot {
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: $radius-round;
+  background: $color-border;
+
+  &.done {
+    background: $color-success;
+  }
+}

@@ -1,0 +1,70 @@
+@use '@/styles/variables.scss' as *;
+
+.container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  box-shadow: $shadow-card;
+}
+
+.stepItem {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+
+  &:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 28rpx;
+    right: -50%;
+    width: 100%;
+    height: 4rpx;
+    background: $color-border;
+    z-index: 0;
+  }
+
+  &.done:not(:last-child)::after {
+    background: $color-success;
+  }
+}
+
+.stepCircle {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: $radius-round;
+  background: $color-border;
+  color: $color-text-white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  margin-bottom: $spacing-xs;
+  position: relative;
+  z-index: 1;
+  transition: all $transition-base;
+
+  &.done {
+    background: $color-success;
+  }
+
+  &.current {
+    background: $color-primary;
+    box-shadow: 0 0 0 8rpx $color-primary-bg;
+  }
+}
+
+.stepLabel {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  font-weight: $font-weight-medium;
+
+  &.active {
+    color: $color-text-primary;
+  }
+}
