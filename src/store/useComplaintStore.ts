@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import Taro from '@tarojs/taro';
 import type {
   Complaint,
   ComplaintStatus,
@@ -29,6 +30,9 @@ interface DailyStats {
   doneCount: number;
   totalCompensation: number;
 }
+
+const STORAGE_KEY_COMPLAINTS = 'complaint_app_complaints_v1';
+const STORAGE_KEY_DRAFT = 'complaint_app_draft_v1';
 
 interface ComplaintState {
   complaints: Complaint[];
@@ -89,6 +93,16 @@ const defaultCompensation: Compensation = {
   gifts: [],
 };
 
+const getDefaultDraft = () => ({
+  customer: null,
+  tags: [],
+  customerStatement: '',
+  photos: [],
+  involvedStaff: [],
+  compensation: { ...defaultCompensation },
+  steps: defaultSteps.map((s) => ({ ...s })),
+});
+
 function computeDailyStats(complaints: Complaint[]): DailyStats {
   const pending = complaints.filter((c) => c.status === 'pending').length;
   const processing = complaints.filter((c) => c.status === 'processing').length;
@@ -99,69 +113,116 @@ function computeDailyStats(complaints: Complaint[]): DailyStats {
   return { pendingCount: pending, processingCount: processing, doneCount: done, totalCompensation: totalComp };
 }
 
+function loadComplaintsFromStorage(): Complaint[] {
+  try {
+    const raw = Taro.getStorageSync(STORAGE_KEY_COMPLAINTS);
+    if (raw && Array.isArray(raw) && raw.length > 0) {
+      return raw as Complaint[];
+    }
+  } catch (e) {
+    console.warn('[Store] 加载持久化客诉数据失败:', e);
+  }
+  return mockComplaints;
+}
+
+function loadDraftFromStorage(): ComplaintState['currentDraft'] {
+  try {
+    const raw = Taro.getStorageSync(STORAGE_KEY_DRAFT);
+    if (raw && typeof raw === 'object') {
+      return { ...getDefaultDraft(), ...(raw as ComplaintState['currentDraft']) };
+    }
+  } catch (e) {
+    console.warn('[Store] 加载持久化草稿数据失败:', e);
+  }
+  return getDefaultDraft();
+}
+
+function saveComplaintsToStorage(complaints: Complaint[]) {
+  try {
+    Taro.setStorageSync(STORAGE_KEY_COMPLAINTS, complaints);
+  } catch (e) {
+    console.warn('[Store] 保存客诉数据失败:', e);
+  }
+}
+
+function saveDraftToStorage(draft: ComplaintState['currentDraft']) {
+  try {
+    Taro.setStorageSync(STORAGE_KEY_DRAFT, draft);
+  } catch (e) {
+    console.warn('[Store] 保存草稿数据失败:', e);
+  }
+}
+
+const initialComplaints = loadComplaintsFromStorage();
+const initialDraft = loadDraftFromStorage();
+
 export const useComplaintStore = create<ComplaintState>((set, get) => ({
-  complaints: mockComplaints,
+  complaints: initialComplaints,
   customers: mockCustomers,
   staffList: mockStaff,
   tagOptions: complaintTagOptions,
-  dailyStats: computeDailyStats(mockComplaints),
+  dailyStats: computeDailyStats(initialComplaints),
   projectStats: mockProjectStats,
   staffStats: mockStaffStats,
   ranking: mockRanking,
 
-  currentDraft: {
-    customer: null,
-    tags: [],
-    customerStatement: '',
-    photos: [],
-    involvedStaff: [],
-    compensation: { ...defaultCompensation },
-    steps: defaultSteps.map((s) => ({ ...s })),
-  },
+  currentDraft: initialDraft,
 
   setDraftCustomer: (customer) =>
-    set((state) => ({
-      currentDraft: { ...state.currentDraft, customer },
-    })),
+    set((state) => {
+      const draft = { ...state.currentDraft, customer };
+      saveDraftToStorage(draft);
+      return { currentDraft: draft };
+    }),
 
   toggleDraftTag: (tag) =>
     set((state) => {
       const tags = state.currentDraft.tags.includes(tag)
         ? state.currentDraft.tags.filter((t) => t !== tag)
         : [...state.currentDraft.tags, tag];
-      return { currentDraft: { ...state.currentDraft, tags } };
+      const draft = { ...state.currentDraft, tags };
+      saveDraftToStorage(draft);
+      return { currentDraft: draft };
     }),
 
   setDraftStatement: (text) =>
-    set((state) => ({
-      currentDraft: { ...state.currentDraft, customerStatement: text },
-    })),
+    set((state) => {
+      const draft = { ...state.currentDraft, customerStatement: text };
+      saveDraftToStorage(draft);
+      return { currentDraft: draft };
+    }),
 
   addDraftPhoto: (photo) =>
-    set((state) => ({
-      currentDraft: {
+    set((state) => {
+      const draft = {
         ...state.currentDraft,
         photos: [...state.currentDraft.photos, photo],
-      },
-    })),
+      };
+      saveDraftToStorage(draft);
+      return { currentDraft: draft };
+    }),
 
   removeDraftPhoto: (photoId) =>
-    set((state) => ({
-      currentDraft: {
+    set((state) => {
+      const draft = {
         ...state.currentDraft,
         photos: state.currentDraft.photos.filter((p) => p.id !== photoId),
-      },
-    })),
+      };
+      saveDraftToStorage(draft);
+      return { currentDraft: draft };
+    }),
 
   updateDraftPhoto: (photoId, fields) =>
-    set((state) => ({
-      currentDraft: {
+    set((state) => {
+      const draft = {
         ...state.currentDraft,
         photos: state.currentDraft.photos.map((p) =>
           p.id === photoId ? { ...p, ...fields } : p
         ),
-      },
-    })),
+      };
+      saveDraftToStorage(draft);
+      return { currentDraft: draft };
+    }),
 
   toggleDraftStaff: (staff) =>
     set((state) => {
@@ -169,65 +230,69 @@ export const useComplaintStore = create<ComplaintState>((set, get) => ({
       const involvedStaff = hasStaff
         ? state.currentDraft.involvedStaff.filter((r) => r.staff.id !== staff.id)
         : [...state.currentDraft.involvedStaff, { staff, called: false, supplementNote: '' }];
-      return { currentDraft: { ...state.currentDraft, involvedStaff } };
+      const draft = { ...state.currentDraft, involvedStaff };
+      saveDraftToStorage(draft);
+      return { currentDraft: draft };
     }),
 
   callDraftStaff: (staffId) =>
-    set((state) => ({
-      currentDraft: {
+    set((state) => {
+      const draft = {
         ...state.currentDraft,
         involvedStaff: state.currentDraft.involvedStaff.map((r) =>
           r.staff.id === staffId
             ? { ...r, called: true, callTime: new Date().toLocaleString('zh-CN') }
             : r
         ),
-      },
-    })),
+      };
+      saveDraftToStorage(draft);
+      return { currentDraft: draft };
+    }),
 
   setDraftStaffNote: (staffId, note) =>
-    set((state) => ({
-      currentDraft: {
+    set((state) => {
+      const draft = {
         ...state.currentDraft,
         involvedStaff: state.currentDraft.involvedStaff.map((r) =>
           r.staff.id === staffId ? { ...r, supplementNote: note } : r
         ),
-      },
-    })),
+      };
+      saveDraftToStorage(draft);
+      return { currentDraft: draft };
+    }),
 
   setDraftCompensation: (comp) =>
-    set((state) => ({
-      currentDraft: {
+    set((state) => {
+      const draft = {
         ...state.currentDraft,
         compensation: { ...state.currentDraft.compensation, ...comp },
-      },
-    })),
+      };
+      saveDraftToStorage(draft);
+      return { currentDraft: draft };
+    }),
 
   toggleDraftStep: (key) =>
-    set((state) => ({
-      currentDraft: {
+    set((state) => {
+      const draft = {
         ...state.currentDraft,
         steps: state.currentDraft.steps.map((s) =>
           s.key === key ? { ...s, completed: !s.completed } : s
         ),
-      },
-    })),
-
-  resetDraft: () =>
-    set({
-      currentDraft: {
-        customer: null,
-        tags: [],
-        customerStatement: '',
-        photos: [],
-        involvedStaff: [],
-        compensation: { ...defaultCompensation },
-        steps: defaultSteps.map((s) => ({ ...s })),
-      },
+      };
+      saveDraftToStorage(draft);
+      return { currentDraft: draft };
     }),
+
+  resetDraft: () => {
+    const draft = getDefaultDraft();
+    saveDraftToStorage(draft);
+    set({ currentDraft: draft });
+  },
 
   addComplaint: (complaint) =>
     set((state) => {
       const complaints = [complaint, ...state.complaints];
+      saveComplaintsToStorage(complaints);
       return { complaints, dailyStats: computeDailyStats(complaints) };
     }),
 
@@ -236,6 +301,7 @@ export const useComplaintStore = create<ComplaintState>((set, get) => ({
       const complaints = state.complaints.map((c) =>
         c.id === id ? { ...c, ...updates, updateTime: new Date().toLocaleString('zh-CN') } : c
       );
+      saveComplaintsToStorage(complaints);
       return { complaints, dailyStats: computeDailyStats(complaints) };
     }),
 
@@ -244,6 +310,7 @@ export const useComplaintStore = create<ComplaintState>((set, get) => ({
       const complaints = state.complaints.map((c) =>
         c.id === id ? { ...c, status, updateTime: new Date().toLocaleString('zh-CN') } : c
       );
+      saveComplaintsToStorage(complaints);
       return { complaints, dailyStats: computeDailyStats(complaints) };
     }),
 
@@ -256,6 +323,7 @@ export const useComplaintStore = create<ComplaintState>((set, get) => ({
         );
         return { ...c, steps, updateTime: new Date().toLocaleString('zh-CN') };
       });
+      saveComplaintsToStorage(complaints);
       return { complaints, dailyStats: computeDailyStats(complaints) };
     }),
 
@@ -269,6 +337,7 @@ export const useComplaintStore = create<ComplaintState>((set, get) => ({
           updateTime: new Date().toLocaleString('zh-CN'),
         };
       });
+      saveComplaintsToStorage(complaints);
       return { complaints, dailyStats: computeDailyStats(complaints) };
     }),
 
@@ -283,6 +352,7 @@ export const useComplaintStore = create<ComplaintState>((set, get) => ({
           updateTime: new Date().toLocaleString('zh-CN'),
         };
       });
+      saveComplaintsToStorage(complaints);
       return { complaints, dailyStats: computeDailyStats(complaints) };
     }),
 
@@ -297,6 +367,7 @@ export const useComplaintStore = create<ComplaintState>((set, get) => ({
         );
         return { ...c, involvedStaff, updateTime: new Date().toLocaleString('zh-CN') };
       });
+      saveComplaintsToStorage(complaints);
       return { complaints, dailyStats: computeDailyStats(complaints) };
     }),
 
@@ -309,6 +380,7 @@ export const useComplaintStore = create<ComplaintState>((set, get) => ({
         );
         return { ...c, involvedStaff, updateTime: new Date().toLocaleString('zh-CN') };
       });
+      saveComplaintsToStorage(complaints);
       return { complaints, dailyStats: computeDailyStats(complaints) };
     }),
 
@@ -319,6 +391,7 @@ export const useComplaintStore = create<ComplaintState>((set, get) => ({
           ? { ...c, customerConfirmed: true, status: 'done' as const, updateTime: new Date().toLocaleString('zh-CN') }
           : c
       );
+      saveComplaintsToStorage(complaints);
       return { complaints, dailyStats: computeDailyStats(complaints) };
     }),
 
