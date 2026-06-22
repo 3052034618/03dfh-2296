@@ -24,6 +24,13 @@ export interface StaffMember {
   avatar: string;
 }
 
+export interface InvolvedStaffRecord {
+  staff: StaffMember;
+  called: boolean;
+  callTime?: string;
+  supplementNote: string;
+}
+
 export interface PhotoRecord {
   id: string;
   url: string;
@@ -53,7 +60,7 @@ export interface Complaint {
   tags: ComplaintTag[];
   customerStatement: string;
   photos: PhotoRecord[];
-  involvedStaff: StaffMember[];
+  involvedStaff: InvolvedStaffRecord[];
   compensation: Compensation;
   steps: NegotiationStep[];
   customerConfirmed: boolean;

@@ -17,10 +17,11 @@ const TodayPage: React.FC = () => {
     return getComplaintsByStatus(activeFilter);
   }, [activeFilter, complaints, getComplaintsByStatus]);
 
+  const today = new Date().toISOString().split('T')[0];
   const callbacks = useMemo(
     () =>
-      complaints.filter((c) => c.needCallback && c.callbackDate === '2026-06-22' && c.status !== 'done'),
-    [complaints]
+      complaints.filter((c) => c.needCallback && c.callbackDate === today && c.status !== 'done'),
+    [complaints, today]
   );
 
   const handleCardClick = (id: string) => {

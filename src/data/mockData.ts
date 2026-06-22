@@ -7,6 +7,7 @@ import type {
   ProjectStat,
   StaffStat,
   RankingItem,
+  InvolvedStaffRecord,
 } from '@/types/complaint';
 
 export const complaintTagOptions: ComplaintTagOption[] = [
@@ -116,7 +117,10 @@ export const mockComplaints: Complaint[] = [
         remark: '术后14天，双眼对称度对比',
       },
     ],
-    involvedStaff: [mockStaff[1], mockStaff[2]],
+    involvedStaff: [
+      { staff: mockStaff[1], called: true, callTime: '2026-06-22 09:35', supplementNote: '确认术后恢复属正常范围，建议复诊观察' },
+      { staff: mockStaff[2], called: true, callTime: '2026-06-22 09:40', supplementNote: '补充护理记录，已提供修复方案' },
+    ],
     compensation: {
       maxRefund: 3000,
       freeItems: ['术后护理复诊2次', '精华导入护理1次'],
@@ -145,7 +149,10 @@ export const mockComplaints: Complaint[] = [
     customerStatement:
       '顾客反馈在做热玛吉项目过程中，护士操作手法不够轻柔，且中途设备报警后等待时间过长，没有工作人员及时解释情况，感到不被重视。',
     photos: [],
-    involvedStaff: [mockStaff[0], mockStaff[2]],
+    involvedStaff: [
+      { staff: mockStaff[0], called: true, callTime: '2026-06-22 11:25', supplementNote: '已致歉并解释设备情况' },
+      { staff: mockStaff[2], called: false, supplementNote: '' },
+    ],
     compensation: {
       maxRefund: 0,
       freeItems: ['热玛吉专项护理1次', '头部SPA放松护理1次'],
@@ -174,7 +181,9 @@ export const mockComplaints: Complaint[] = [
     customerStatement:
       '顾客表示做光子嫩肤前咨询时说价格是1280元一次，结算时被告知需要支付1580元，说是包含了面膜费用，但之前没有说明清楚，顾客认为存在价格欺诈。',
     photos: [],
-    involvedStaff: [mockStaff[3]],
+    involvedStaff: [
+      { staff: mockStaff[3], called: true, callTime: '2026-06-21 15:50', supplementNote: '承认报价时未说明面膜费用，同意退还差价' },
+    ],
     compensation: {
       maxRefund: 300,
       freeItems: [],
@@ -211,7 +220,10 @@ export const mockComplaints: Complaint[] = [
         remark: '填充后30天对比照',
       },
     ],
-    involvedStaff: [mockStaff[4], mockStaff[0]],
+    involvedStaff: [
+      { staff: mockStaff[4], called: true, callTime: '2026-06-20 14:10', supplementNote: '评估后认为可免费补打1ml' },
+      { staff: mockStaff[0], called: true, callTime: '2026-06-20 14:15', supplementNote: '协助沟通补打方案，顾客基本接受' },
+    ],
     compensation: {
       maxRefund: 0,
       freeItems: ['免费补打1ml同品牌玻尿酸', '术后护理包一套'],

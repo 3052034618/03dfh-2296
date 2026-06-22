@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, Image, Button, ScrollView } from '@tarojs/components';
+import React, { useState } from 'react';
+import { View, Text, Image, Button, Input, ScrollView } from '@tarojs/components';
 import Taro, { useRouter } from '@tarojs/taro';
 import classnames from 'classnames';
 import styles from './index.module.scss';
@@ -20,9 +20,19 @@ const statusMap = {
 
 const ComplaintDetailPage: React.FC = () => {
   const router = useRouter();
-  const { getComplaintById, tagOptions, toggleDraftStep, confirmComplaint } = useComplaintStore();
+  const {
+    getComplaintById,
+    tagOptions,
+    updateComplaintStep,
+    confirmComplaint,
+    callComplaintStaff,
+    setComplaintStaffNote,
+  } = useComplaintStore();
   const id = router.params.id || '';
   const complaint = getComplaintById(id);
+
+  const [editingStaffId, setEditingStaffId] = useState<string | null>(null);
+  const [staffNoteInput, setStaffNoteInput] = useState('');
 
   React.useEffect(() => {
     if (!complaint) {
@@ -44,12 +54,14 @@ const ComplaintDetailPage: React.FC = () => {
   const statusInfo = statusMap[complaint.status];
 
   const handleGoConfirm = () => {
-    console.log('[ComplaintDetail] Go to confirm page for:', complaint.id);
     Taro.switchTab({ url: '/pages/confirm/index' });
   };
 
+  const handleStepClick = (key: 'appease' | 'recheck' | 'discuss') => {
+    updateComplaintStep(complaint.id, key);
+  };
+
   const handleCustomerConfirm = () => {
-    console.log('[ComplaintDetail] Quick confirm:', complaint.id);
     Taro.showModal({
       title: '顾客确认',
       content: '请由顾客亲自点击确认，表示已知悉并接受解释或赔付方案。',
@@ -61,6 +73,22 @@ const ComplaintDetailPage: React.FC = () => {
         }
       },
     });
+  };
+
+  const handleCallStaff = (staffId: string) => {
+    callComplaintStaff(complaint.id, staffId);
+    Taro.showToast({ title: '已呼叫', icon: 'success' });
+  };
+
+  const handleSaveStaffNote = (staffId: string) => {
+    setComplaintStaffNote(complaint.id, staffId, staffNoteInput);
+    setEditingStaffId(null);
+    Taro.showToast({ title: '补充说明已保存', icon: 'success' });
+  };
+
+  const handleEditStaffNote = (staffId: string, currentNote: string) => {
+    setEditingStaffId(staffId);
+    setStaffNoteInput(currentNote);
   };
 
   return (
@@ -149,7 +177,7 @@ const ComplaintDetailPage: React.FC = () => {
           <StepIndicator
             steps={complaint.steps}
             clickable
-            onClick={(k) => toggleDraftStep(k)}
+            onClick={handleStepClick}
           />
         </View>
       </View>
@@ -165,9 +193,19 @@ const ComplaintDetailPage: React.FC = () => {
                 <View key={p.id} className={styles.photoItem}>
                   <Image className={styles.photoImg} src={p.url} mode="aspectFill" />
                   <View className={styles.photoInfo}>
-                    <Text>
+                    <Text className={styles.photoInfoText}>
                       {p.angle} · {p.light}
                     </Text>
+                    {p.photographer && (
+                      <Text className={styles.photoInfoText}>
+                        拍摄：{p.photographer}
+                      </Text>
+                    )}
+                    {p.remark && (
+                      <Text className={styles.photoInfoText}>
+                        {p.remark}
+                      </Text>
+                    )}
                   </View>
                 </View>
               ))}
@@ -179,16 +217,61 @@ const ComplaintDetailPage: React.FC = () => {
       {complaint.involvedStaff.length > 0 && (
         <View className={styles.section}>
           <Text className={styles.sectionTitle}>
-            <Text>👥</Text>参与人员
+            <Text>👥</Text>参与人员（{complaint.involvedStaff.length}）
           </Text>
           <View className={styles.card}>
             <View className={styles.staffList}>
-              {complaint.involvedStaff.map((s) => (
-                <View key={s.id} className={styles.staffItem}>
-                  <Image className={styles.staffAvatar} src={s.avatar} mode="aspectFill" />
-                  <Text className={styles.staffName}>
-                    {s.name}（{roleLabel[s.role]}）
-                  </Text>
+              {complaint.involvedStaff.map((r) => (
+                <View key={r.staff.id} className={styles.staffItem}>
+                  <Image className={styles.staffAvatar} src={r.staff.avatar} mode="aspectFill" />
+                  <View className={styles.staffContent}>
+                    <View className={styles.staffNameRow}>
+                      <Text className={styles.staffName}>
+                        {r.staff.name}（{roleLabel[r.staff.role]}）
+                      </Text>
+                      {r.called ? (
+                        <Text className={styles.staffCalled}>已呼叫 {r.callTime}</Text>
+                      ) : (
+                        <Button
+                          className={styles.staffCallBtn}
+                          onClick={() => handleCallStaff(r.staff.id)}
+                        >
+                          呼叫
+                        </Button>
+                      )}
+                    </View>
+                    {r.supplementNote && editingStaffId !== r.staff.id && (
+                      <Text className={styles.staffNote}
+                        onClick={() => handleEditStaffNote(r.staff.id, r.supplementNote)}
+                      >
+                        📋 {r.supplementNote}
+                      </Text>
+                    )}
+                    {!r.supplementNote && editingStaffId !== r.staff.id && r.called && (
+                      <Text className={styles.staffNotePlaceholder}
+                        onClick={() => handleEditStaffNote(r.staff.id, '')}
+                      >
+                        点击补充说明...
+                      </Text>
+                    )}
+                    {editingStaffId === r.staff.id && (
+                      <View className={styles.staffNoteEdit}>
+                        <Input
+                          className={styles.staffNoteInput}
+                          value={staffNoteInput}
+                          onInput={(e) => setStaffNoteInput(e.detail.value)}
+                          placeholder="输入补充说明"
+                          autoFocus
+                        />
+                        <Button
+                          className={styles.staffNoteSave}
+                          onClick={() => handleSaveStaffNote(r.staff.id)}
+                        >
+                          保存
+                        </Button>
+                      </View>
+                    )}
+                  </View>
                 </View>
               ))}
             </View>

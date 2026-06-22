@@ -20,16 +20,31 @@ const CustomerSearchPage: React.FC = () => {
   }, [keyword, customers]);
 
   const handleScan = () => {
-    console.log('[CustomerSearch] Scan');
     Taro.scanCode({
       onlyFromCamera: false,
       success: (res) => {
-        console.log('[CustomerSearch] Scan result:', res.result);
-        Taro.showToast({ title: '已识别顾客', icon: 'success' });
+        const scanResult = res.result;
+        const matched = customers.find(
+          (c) => c.id === scanResult || c.phone === scanResult || scanResult.includes(c.id)
+        );
+        if (matched) {
+          if (selectMode) {
+            setDraftCustomer(matched);
+            Taro.showToast({ title: `已选择 ${matched.name}`, icon: 'success' });
+            setTimeout(() => Taro.navigateBack(), 500);
+          } else {
+            Taro.showToast({ title: `已识别：${matched.name}`, icon: 'success' });
+          }
+        } else {
+          Taro.showModal({
+            title: '未找到顾客',
+            content: `扫码内容"${scanResult}"未匹配到任何顾客档案，请确认二维码是否正确。`,
+            showCancel: false,
+          });
+        }
       },
-      fail: (err) => {
-        console.error('[CustomerSearch] Scan failed:', err);
-        Taro.showToast({ title: '扫码失败', icon: 'none' });
+      fail: () => {
+        Taro.showToast({ title: '扫码失败，请重试', icon: 'none' });
       },
     });
   };

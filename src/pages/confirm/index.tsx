@@ -5,14 +5,20 @@ import classnames from 'classnames';
 import styles from './index.module.scss';
 import { useComplaintStore } from '@/store/useComplaintStore';
 import StepIndicator from '@/components/StepIndicator';
-import type { Complaint } from '@/types/complaint';
 
 const ConfirmPage: React.FC = () => {
-  const { complaints, confirmComplaint, updateComplaintStatus } = useComplaintStore();
+  const {
+    complaints,
+    confirmComplaint,
+    updateComplaintStatus,
+    updateComplaintStep,
+    updateComplaintCompensation,
+    updateComplaintCallback,
+  } = useComplaintStore();
   const [selectedId, setSelectedId] = useState<string>('');
 
   const pendingList = useMemo(
-    () => complaints.filter((c) => c.status !== 'done' || !c.customerConfirmed),
+    () => complaints.filter((c) => !c.customerConfirmed),
     [complaints]
   );
 
@@ -25,26 +31,37 @@ const ConfirmPage: React.FC = () => {
   const list = tab === 'pending' ? pendingList : confirmedList;
   const current = list.find((c) => c.id === selectedId) || list[0];
 
-  const [needCallback, setNeedCallback] = useState(true);
-  const [callbackDate, setCallbackDate] = useState('2026-06-23');
   const [refundInput, setRefundInput] = useState('');
 
   React.useEffect(() => {
     if (current) {
-      setNeedCallback(current.needCallback);
-      setCallbackDate(current.callbackDate || '2026-06-23');
       setRefundInput(String(current.compensation.maxRefund));
+      if (!selectedId) {
+        setSelectedId(current.id);
+      }
     }
   }, [current?.id]);
 
-  const toggleStep = (key: 'appease' | 'recheck' | 'discuss') => {
+  const handleRefundBlur = () => {
     if (!current) return;
-    console.log('[Confirm] Toggle step:', key);
+    const val = parseFloat(refundInput) || 0;
+    updateComplaintCompensation(current.id, { maxRefund: val });
+  };
+
+  const handleStepClick = (key: 'appease' | 'recheck' | 'discuss') => {
+    if (!current) return;
+    updateComplaintStep(current.id, key);
+  };
+
+  const handleCallbackToggle = () => {
+    if (!current) return;
+    const next = !current.needCallback;
+    const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+    updateComplaintCallback(current.id, next, next ? tomorrow : undefined);
   };
 
   const handleCustomerConfirm = () => {
     if (!current) return;
-    console.log('[Confirm] Request customer confirm for:', current.id);
 
     Taro.showModal({
       title: '发送顾客确认',
@@ -79,7 +96,6 @@ const ConfirmPage: React.FC = () => {
 
   const handleMarkProcessing = () => {
     if (!current) return;
-    console.log('[Confirm] Mark processing:', current.id);
     updateComplaintStatus(current.id, 'processing');
     Taro.showToast({ title: '状态已更新', icon: 'success' });
   };
@@ -110,13 +126,13 @@ const ConfirmPage: React.FC = () => {
         <View className={styles.tabs}>
           <Text
             className={classnames(styles.tab, tab === 'pending' && styles.active)}
-            onClick={() => setTab('pending')}
+            onClick={() => { setTab('pending'); setSelectedId(''); }}
           >
             待确认 ({pendingList.length})
           </Text>
           <Text
             className={classnames(styles.tab, tab === 'done' && styles.active)}
-            onClick={() => setTab('done')}
+            onClick={() => { setTab('done'); setSelectedId(''); }}
           >
             已确认 ({confirmedList.length})
           </Text>
@@ -172,7 +188,7 @@ const ConfirmPage: React.FC = () => {
           </View>
         </View>
 
-        <StepIndicator steps={current.steps} clickable onClick={toggleStep} />
+        <StepIndicator steps={current.steps} clickable onClick={handleStepClick} />
       </View>
 
       <View className={styles.sectionTitle}>
@@ -187,6 +203,7 @@ const ConfirmPage: React.FC = () => {
               type="digit"
               value={refundInput}
               onInput={(e) => setRefundInput(e.detail.value)}
+              onBlur={handleRefundBlur}
               placeholder="0"
               style={{ textAlign: 'right' }}
             />
@@ -239,17 +256,17 @@ const ConfirmPage: React.FC = () => {
           <Text
             className={classnames(
               styles.callbackSwitch,
-              needCallback ? styles.switchOn : styles.switchOff
+              current.needCallback ? styles.switchOn : styles.switchOff
             )}
-            onClick={() => setNeedCallback(!needCallback)}
+            onClick={handleCallbackToggle}
           >
-            {needCallback ? '✓ 已开启' : '已关闭'}
+            {current.needCallback ? '✓ 已开启' : '已关闭'}
           </Text>
         </View>
-        {needCallback && (
+        {current.needCallback && (
           <View className={styles.compRow}>
             <Text className={styles.compLabel}>回访日期</Text>
-            <Text className={styles.datePicker}>{callbackDate}</Text>
+            <Text className={styles.datePicker}>{current.callbackDate}</Text>
           </View>
         )}
       </View>
